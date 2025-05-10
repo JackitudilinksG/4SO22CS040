@@ -1,20 +1,18 @@
-export async function POST(req: Request) {
-  const body = await req.json();
+import Fastify from 'fastify';
+import fastifyHttpProxy from 'fastify-http-proxy';
 
-  const res = await fetch("http://20.244.56.144/evaluation-service/auth", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+const app = Fastify();
+
+app.register(fastifyHttpProxy, {
+  upstream: 'http://20.244.56.144',
+  prefix: '/evaluation-service', // This will match the /evaluation-service route
+  replyOptions: {
+    onResponse: (request, reply) => {
+      reply.header('Access-Control-Allow-Origin', '*'); // Adjust as needed
     },
-    body: JSON.stringify(body),
-  });
+  },
+});
 
-  const data = await res.json();
-
-  return new Response(JSON.stringify(data), {
-    status: res.status,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-}
+app.listen({ port: 3000 }, () => {
+  console.log('Proxy server running on http://localhost:3000');
+});

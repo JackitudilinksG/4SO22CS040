@@ -20,16 +20,13 @@ export default function TickerPage() {
         "http://20.244.56.144/evaluation-service/auth",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
           body: JSON.stringify({
-            email: "22a40.deric@sjec.ac.in",
-            name: "deric jojo",
-            rollNo: "4SO22CS040",
-            accessCode: "KjJAxP",
-            clientID: "",
-            clientSecret: ""
+            email: process.env.EMAIL,
+            name: process.env.NAME,
+            rollNo: process.env.ROLL_NO,
+            accessCode: process.env.ACCESS_CODE,
+            clientID: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
           })
         }
       );
@@ -37,6 +34,7 @@ export default function TickerPage() {
       const data = await response.json();
       const newToken = data.token;
       setToken(newToken);
+      console.log("Fetched new token:", newToken);
     } catch (err: any) {
       setError("Failed to fetch token");
     }

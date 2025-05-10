@@ -13,75 +13,77 @@ export default function TickerPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
 
-  // Function to fetch a new token
-  const fetchToken = async () => {
-    try {
-      const response = await fetch(
-        "http://20.244.56.144/evaluation-service/auth",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email: process.env.EMAIL,
-            name: process.env.NAME,
-            rollNo: process.env.ROLL_NO,
-            accessCode: process.env.ACCESS_CODE,
-            clientID: process.env.CLIENT_ID,
-            clientSecret: process.env.CLIENT_SECRET,
-          })
-        }
-      );
-
-      const data = await response.json();
-      const newToken = data.token;
-      setToken(newToken);
-      console.log("Fetched new token:", newToken);
-    } catch (err: any) {
-      setError("Failed to fetch token");
-    }
+  const credentials = {
+    email: process.env.NEXT_PUBLIC_EMAIL!,
+    name: process.env.NEXT_PUBLIC_NAME!,
+    rollNo: process.env.NEXT_PUBLIC_ROLL_NO!,
+    accessCode: process.env.NEXT_PUBLIC_ACCESS_CODE!,
+    clientID: process.env.NEXT_PUBLIC_CLIENT_ID!,
+    clientSecret: process.env.NEXT_PUBLIC_CLIENT_SECRET!,
   };
 
-  // Fetch token on component mount and set up a 5-minute interval to refresh it
-  useEffect(() => {
-    fetchToken(); // Fetch the token initially
-    const interval = setInterval(fetchToken, 5 * 60 * 1000); // Refresh token every 5 minutes
+  const fetchToken = async () => {
+  try {
+    const response = await fetch("/api/auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(credentials),
+    });
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    const data = await response.json();
+    console.log("Token response:", data);
+
+    if (!response.ok || !data.access_token) {
+      throw new Error("Token fetch failed");
+    }
+
+    setToken(data.access_token);
+  } catch (err: any) {
+    setError("Failed to fetch token: " + err.message);
+  }
+};
+
+
+  // Fetch token on mount and refresh every 5 mins
+  useEffect(() => {
+    fetchToken();
+    const interval = setInterval(fetchToken, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
+  // Fetch data once token and ticker are available
   useEffect(() => {
-    if (ticker && token) {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
+    const fetchData = async () => {
+      if (!ticker || !token) return;
 
-          const response = await fetch(
-            `http://20.244.56.144/evaluation-service/stocks/${ticker}?minutes=5`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(`Error: ${response.status} ${response.statusText}`);
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `http://20.244.56.144/evaluation-service/stocks/${ticker}?minutes=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
+        );
 
-          const result = await response.json();
-          setData(result);
-        } catch (err: any) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
-      };
 
-      fetchData();
-    } else if (!token) {
-      setError("Token not available");
-    }
+        const result = await response.json();
+        setData(result);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [ticker, token]);
 
   return (
